@@ -1,1 +1,3 @@
+var a = 5.12;
 exit(45);
+var name = "12";;
