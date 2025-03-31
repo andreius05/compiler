@@ -1,3 +1,10 @@
-var a = 5.12;
+var     a2a = 20<=12;
 exit(45);
-var name = "12";;
+var name = "12+12";
+var age = 15+15;   
+    if age<name:
+    print("Gaay");
+    elif age<=18:
+    print("Gaaaaty");
+    else:
+print("Sosa"); 
