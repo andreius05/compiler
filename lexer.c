@@ -26,66 +26,78 @@ typedef enum commands{
       IF,
       ELSE,
       ELIF,
-      VAR
+      VAR,
+      RETURN,
 }TokenKeywordCmd;
 
 
 typedef enum operators{
-     MINUS,PLUS,DIVIDE,MULTIPLY,ASSIGN,COMPARE,MORE,
-     LESS,MOREorEQUALS,LESSorEQUALS,MODULE,NotEQUALS
+     MINUS,PLUS,DIVIDE,MULTIPLY,ASSIGN ,COMPARE,MORE,
+     LESS,MOREorEQUALS,LESSorEQUALS,MODULE,NotEQUALS, AND,OR
 }TokenOperatorsTypes;
 
 
 typedef enum types{
-      INT ,STRING,BOOL,FLOAT,SEPARATOR,OPERATOR
+      INT ,STRING,BOOL,FLOAT
 }TokenType;
 
+typedef enum {DATA,KEYWORD,OPERATOR,SYMBOL,IDENTIFIER,COMMENT,UNKNOWN}TypeOfToken;
+typedef enum{VARIABLE,FUNCTION,UNKNOWNnow}TypeOfIdentifier;
+typedef enum symbols{SEMICOLON=';',lPAREN='(',rPAREN = ')',lBRACKET='{',rBRACKET = '}',lKwSkob = '[',rKwSkob = ']'}TypeOfSymbol;
+
+typedef struct keyword{
+     TokenKeywordCmd cmd;
+     char * value;
+     //Тут ещё много работы в будующем
+}keyword_t;
+
+
+typedef struct data_t{
+     TokenType typeOfData;
+     void * value;
+}data_t;
+
+typedef struct ident_t{
+     TypeOfIdentifier type;
+      char * name;
+     // void * value;
+     // тут тоже мно8го работы
+}ident_t;
+
+typedef struct operator_t{
+     TokenOperatorsTypes typeOfOperator;
+     // Still working on it
+}operator_t;
+
+
+typedef struct symbol_t{
+     TypeOfSymbol symbol;
+}symbol_t;
+
 typedef struct {
-      TokenType type;
-      void * value;
-}TokenLiteral_t;
-
-
-typedef struct {
-     TokenType type;
-     TokenOperatorsTypes operator;
-}TokenOperator_t;
-
-typedef struct {
-      TokenKeywordCmd command;
-      char * value;
-}TokenKeyword_t;
-
-
-typedef struct stacknode{
-     struct stacknode * next;//Указатель на следующий эллемент в стеке
-     TokenKeyword_t * data;//Указатель на переменную
-}stacknode;
+     TypeOfToken type;
+     union typeOf
+     {
+          operator_t *operator;
+          symbol_t * symbol;
+          ident_t * identifier;
+          data_t * data;
+          keyword_t * keyword;
+     }typeOf;   
+}Token_t;
 
 
 
-typedef enum syntax_sugar{SEMICOLON=';',OPENBRACKET='(',CLOSEBRACKET=')'};
 
 
-void free_stack(stacknode * top){
-     if (top==NULL)return;
-     while (top!=NULL){
-          stacknode * tmp = top->next;
-          free(top->data->value);
-          free(top->data);
-          free(top);
-          top = tmp;
-     }
-}
 
 
-void print_stack(stacknode * top){
-     if (top==NULL)return ;
-     while(top!=NULL){
-          printf("VAR [%s]\n",top->data->value);
-          top = top->next;
-     }
-}
+
+
+
+
+
+
 
 int isoperator(char c) {
      if (c=='='){
@@ -115,33 +127,29 @@ int isoperator(char c) {
      else if (c =='%'){
           return 1;
      }
+     else if (c == '|')
+          return 1;
+     else if (c=='&')
+          return 1;
      return 0;
  }
 
 
 
 
- void push( stacknode **top,TokenKeyword_t * data ){
-     stacknode * tmp = malloc(sizeof(stacknode));
-     tmp->data = data;
-     tmp->next = *top;
-     *top = tmp;
-  }
-
-TokenKeyword_t * pop( stacknode **top ){
-  TokenKeyword_t * data = (*top)->data;
-  stacknode * next = (*top)->next;
-  free(*top);
-  *top = next;
-  return data;
-}
+ 
 
 
-int empty( stacknode *top ){
-  if ( top==NULL )return 1;
-  return 0;
-}
 
+
+
+ int is_specific_symbol(char c) {
+     return (c == '(' || c == ')' ||
+             c == '{' || c == '}' ||
+             c == '[' || c == ']' ||
+             c == ';');
+ }
+ 
 
 
 
@@ -173,8 +181,152 @@ void error_call(error_t * error){
 
 
 
-TokenKeyword_t * generate_keyword(char current,FILE * file){
-     TokenKeyword_t * token = malloc(sizeof(TokenKeyword_t));
+Token_t * generate_symbol(char current,FILE * file){
+     Token_t * token = malloc(sizeof(Token_t));
+     token->typeOf.symbol = malloc(sizeof(symbol_t));
+     if (current=='('){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = lPAREN;
+          return token;
+     }
+     else if (current==')'){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = rPAREN;
+          return token;
+     }
+     else if (current=='{'){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = lBRACKET;
+          return token;
+     }
+     else if (current=='}'){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = rBRACKET;
+          return token;
+     }
+     else if (current=='['){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = lKwSkob;
+          return token;
+     }
+     else if (current==']'){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = rKwSkob;
+          return token;
+     }
+     else if (current==';'){
+          token->type = SYMBOL;
+          token->typeOf.symbol->symbol = SEMICOLON;
+          return token;
+     }
+     else {
+          free(token);
+          return NULL;
+     }
+}
+
+
+Token_t * generate_operator(char current,FILE * file){
+     Token_t * token = malloc(sizeof(Token_t));
+     token->type = OPERATOR;
+     token->typeOf.operator = malloc(sizeof(operator_t));
+     char tmp = current;
+     //Сначала обработка обычных операторов
+     if (current =='+'){
+          // mb poptom
+          token->typeOf.operator->typeOfOperator = PLUS;
+          return token;
+     }
+     else if (current =='='){
+          current = fgetc(file);
+          if (current == '='){
+               token->typeOf.operator->typeOfOperator = COMPARE;
+               return token;
+          }
+          ungetc(current,file);
+          token->typeOf.operator->typeOfOperator = ASSIGN;
+          return token;
+     }
+     else if (current =='-'){
+          token->typeOf.operator->typeOfOperator = MINUS;
+          return token;
+     }
+     else if (current =='/'){
+          token->typeOf.operator->typeOfOperator = DIVIDE;
+          return token;
+     }
+     else if (current =='*'){
+          token->typeOf.operator->typeOfOperator = MULTIPLY;
+          return token;
+     }
+     else if (current =='<'){
+          current = fgetc(file);
+          if (current == '='){
+               token->typeOf.operator->typeOfOperator = LESSorEQUALS;
+               return token;
+          }
+          ungetc(current,file);
+          token->typeOf.operator->typeOfOperator = LESS;
+          return token;
+     }
+     else if (current =='>'){
+          current = fgetc(file);
+          if (current == '='){
+               token->typeOf.operator->typeOfOperator = MOREorEQUALS;
+               return token;
+          }
+          ungetc(current,file);
+          token->typeOf.operator->typeOfOperator = MORE;
+          return token;
+     }
+     else if (current =='%'){
+          token->typeOf.operator->typeOfOperator = MODULE;
+          return token;
+     }
+     else if (current =='!'){
+          current = fgetc(file);
+          if (current == '='){
+               token->typeOf.operator->typeOfOperator = NotEQUALS;
+               return token;
+          }
+          ungetc(current,file);
+          free(token->typeOf.operator);
+          free(token);
+          return NULL;
+     }
+     else if (current=='&'){
+          current = fgetc(file);
+          if (current=='&'){
+               token->typeOf.operator->typeOfOperator=AND;
+               return token;
+          }
+          if (current != EOF)
+               ungetc(current, file);
+          printf( "Unexpected '&' without pair '&'\n");
+          free(token->typeOf.operator);
+          free(token);
+          return NULL;
+
+     }
+     else if (current=='|'){
+          current = fgetc(file);
+          if (current=='|'){
+               token->typeOf.operator->typeOfOperator=OR;
+               return token;
+          }
+          if (current != EOF)
+               ungetc(current, file);
+          printf( "Unexpected '|' without pair '|'\n");
+          free(token->typeOf.operator);
+          free(token);
+          return NULL;
+
+     }
+}
+
+
+Token_t * generate_keyword(char current,FILE * file){
+     Token_t * token = malloc(sizeof(Token_t));
      char * keyword = malloc(64);//MAX KEYWORD LEN NAMEW;
      int index = 0;
      while (isalpha(current)&&current!=EOF){
@@ -195,15 +347,11 @@ TokenKeyword_t * generate_keyword(char current,FILE * file){
 
      
      //HERE are CASES
-     //TEST EXIT
-     if ((strcmp(keyword,"exit")==0)){
-          token->command = EXIT;
-          token->value = keyword;
-          return token;
-     }
-     //VARIABLE
-     else if ((strcmp(keyword,"var")==0)){
-          token->command = VAR;
+
+      if ((strcmp(keyword,"var")==0)){
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = VAR;
           free(keyword);
           char * nameOFvar = malloc(64);
           int index = 0;
@@ -211,7 +359,7 @@ TokenKeyword_t * generate_keyword(char current,FILE * file){
           while (current==' '){
                current = fgetc(file);
           }
-          if (isalpha(current)){
+          if (current=='_' || isalpha(current)){
                while (isalpha(current) || isdigit(current )|| current=='_'){
                     if (index>63){
                          printf("So big name of variable");
@@ -223,43 +371,92 @@ TokenKeyword_t * generate_keyword(char current,FILE * file){
                }
                nameOFvar[index] = '\0';
 
-               token->value = (char * )nameOFvar;
+               token->typeOf.keyword->value = (char * )nameOFvar;
           }
           else{
                printf("Something goes wrong with your variable\n");
+               ungetc(current, file);
                return NULL;
           }
+          ungetc(current, file);
           return token;
      }
      //IF STATEMANT
      else if ((strcmp(keyword,"if")==0)){
-          token->command = IF;
-          token->value = strdup("IF STATEMNET");
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = IF;
+          token->typeOf.keyword->value = strdup("Just if statemant");
           free(keyword);
+          ungetc(current, file);
           return token;
      }
      //ELIF STATEMANT
      else if ((strcmp(keyword,"elif")==0)){
-          token->command = ELIF;
-          token->value = strdup("ELIF STATEMNET");
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = ELIF;
+          token->typeOf.keyword->value = strdup("ELIF STATEMNET");
           free(keyword);
+          ungetc(current, file);
           return token;
      }
      //ELSE STATEMANT
      else if ((strcmp(keyword,"else")==0)){
-          token->command = ELSE;
-          token->value = strdup("ELSE STATEMNET");
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = ELSE;
+          token->typeOf.keyword->value = strdup("ELSE STATEMNET");
           free(keyword);
+          ungetc(current, file);
           return token;
      }
+     else if ((strcmp(keyword,"return")==0)){
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = RETURN;
+          token->typeOf.keyword->value = strdup("return STATEMNET");
+          free(keyword);
+          ungetc(current, file);
+          return token;
+     }
+     else if ((strcmp(keyword,"for")==0)){
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = FOR;
+          token->typeOf.keyword->value = strdup("FOR LOOP");
+          free(keyword);
+          ungetc(current, file);
+          return token;
+     }
+     else if ((strcmp(keyword,"while")==0)){
+          token->type = KEYWORD;
+          token->typeOf.keyword = malloc(sizeof(keyword_t));
+          token->typeOf.keyword->cmd = WHILE;
+          token->typeOf.keyword->value = strdup("WHILE LOOp");
+          free(keyword);
+          ungetc(current, file);
+          return token;
+     }
+     else {
+          token->type = IDENTIFIER;
+          token->typeOf.identifier = malloc(sizeof(ident_t));
+          token->typeOf.identifier->type =UNKNOWNnow;
+          token->typeOf.identifier->name = strdup(keyword);
+          free(keyword);
+          ungetc(current, file); 
+          return token;
+     }
+     
      free(token);
      free(keyword);
+     ungetc(current, file);
      return NULL;
 }
 
 
-TokenLiteral_t * generate_string(char current,FILE * file){
-     TokenLiteral_t * str_token = malloc(sizeof(TokenLiteral_t));
+Token_t * generate_string(char current,FILE * file){
+     Token_t * str_token = malloc(sizeof(Token_t));
      int index = 0;
      char * buffer = malloc(256);
      current = fgetc(file);
@@ -280,8 +477,10 @@ TokenLiteral_t * generate_string(char current,FILE * file){
           return NULL;
      }
      buffer[index]='\0';
-     str_token->type = STRING;
-     str_token->value = (char *)buffer;
+     str_token->type = DATA;
+     str_token->typeOf.data = malloc(sizeof(data_t));
+     str_token->typeOf.data->typeOfData = STRING;
+     str_token->typeOf.data->value = (char * )buffer;
      return str_token;
 }
 
@@ -289,8 +488,10 @@ TokenLiteral_t * generate_string(char current,FILE * file){
 
 
 
-TokenLiteral_t * generate_number(char current,FILE * file){
-     TokenLiteral_t * token = malloc(sizeof(TokenLiteral_t));
+
+
+Token_t * generate_number(char current,FILE * file){
+     Token_t * token = malloc(sizeof(Token_t));
      int is_float = 0;
      int index = 0;
      char buffer [64] = {0};
@@ -309,17 +510,21 @@ TokenLiteral_t * generate_number(char current,FILE * file){
           ungetc(current, file);
      }
      if (!is_float){
-          token->type = INT;
+          token->type = DATA;
           int * value = malloc(sizeof(int));
           *value = atoi(buffer);
-          token->value = value ;
+          token->typeOf.data = malloc(sizeof(data_t));
+          token->typeOf.data->typeOfData = INT;
+          token->typeOf.data->value = value;
           
      }
      else{
-          token->type = FLOAT;
-          float * value = malloc(sizeof(float));
-          * value = atof(buffer);
-          token->value = value;
+          token->type = DATA;
+          int * value = malloc(sizeof(int));
+          *value = atoi(buffer);
+          token->typeOf.data = malloc(sizeof(data_t));
+          token->typeOf.data->typeOfData = FLOAT;
+          token->typeOf.data->value = value;
           
      }
      return token;
@@ -327,7 +532,6 @@ TokenLiteral_t * generate_number(char current,FILE * file){
 
 
 void lexer(FILE * file){
-     stacknode * stack = NULL;
      if (file==NULL)return;
      char current = fgetc(file);
      int index = 0;
@@ -336,55 +540,148 @@ void lexer(FILE * file){
      while(current!=EOF){
           semicolon = 0;
 	  while(current!='\n'){
-	  if (current==';'){
-	      printf("Found SEMICOLON\n");
-	      semicolon+=1;
-	  }
-	  else if (current=='('){
-	       printf("Открыл скобку\n");
+	  if (is_specific_symbol(current)){
+          Token_t * token = generate_symbol(current,file);
+          if (token->typeOf.symbol->symbol == lPAREN){
+               printf("Found ( this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == rPAREN){
+               printf("Found ) this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == lBRACKET){
+               printf("Found { this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == rBRACKET){
+               printf("Found } this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == lKwSkob){
+               printf("Found [ this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == rKwSkob){
+               printf("Found ] this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+          else if (token->typeOf.symbol->symbol == SEMICOLON){
+               printf("Found ; this shit\n");
+               free(token->typeOf.symbol);
+               free(token);
+          }
+       }
+     else if (current=='#'){
 
-	  }
-	  else if (current==')'){
-	       printf("Закрыл скобку\n");
-	  }
+     }
 	  else if (isdigit(current)){
-	       TokenLiteral_t * test_token = generate_number(current,file);
-            if (test_token->type==INT){
+	       Token_t * test_token = generate_number(current,file);
+            if (test_token->typeOf.data->typeOfData==INT){
                printf("TOKEN TYPE IS [INT] ");
-               printf(" AND VALUE IS %d\n",*(int * )test_token->value);
+               printf(" AND VALUE IS %d\n",*(int * )test_token->typeOf.data->value);
             }
-            if (test_token->type==FLOAT){
+            if (test_token->typeOf.data->typeOfData==FLOAT){
                printf("TOKEN TYPE IS [FLOAT] ");
-               printf(" AND VALUE IS %f\n",*(float * )test_token->value);
+               printf(" AND VALUE IS %f\n",*(float * )test_token->typeOf.data->value);
             }
 	       printf("\n");
-	       free(test_token->value);
+	       free(test_token->typeOf.data->value);
 	       free(test_token);
 	       
 	  }
        else if (isoperator(current)){
           char tmp = current;
-          current = fgetc(file);
-          if (current=='='){
-               char doubleword[3];
-               doubleword[0]=tmp;
-               doubleword[1] = current;
-               doubleword[2]='\0';
-               printf("Found double symbols operator [%s] \n",doubleword);
-               isdoubleoperator(doubleword);
+          Token_t * operator_token = generate_operator(current,file);
+          if (operator_token!=NULL){
+          if (operator_token->typeOf.operator->typeOfOperator==ASSIGN){
+               printf("EQUALS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
           }
-          else{
-               ungetc(current, file);  // Возвращаем символ обратно в поток
-               printf("Nah found only one symbol operator [%c]\n", tmp);
-           }
+          else if (operator_token->typeOf.operator->typeOfOperator==COMPARE){
+               printf("COMPARING\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==MINUS){
+               printf("MINUS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==PLUS){
+               printf("PLUS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==DIVIDE){
+               printf("DIVIDE\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==MULTIPLY){
+               printf("MULLTIPLY\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==LESS){
+               printf("LESS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==LESSorEQUALS){
+               printf("LESS OR EQUALS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==MORE){
+               printf("MORE\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==MOREorEQUALS){
+               printf("MORE OR EQUALSE\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==NotEQUALS){
+               printf("NOT EQUALS\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==AND){
+               printf("AND\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==OR){
+               printf("OR\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+          else if (operator_token->typeOf.operator->typeOfOperator==MODULE){
+               printf("MODULE\n");
+               free(operator_token->typeOf.operator);
+               free(operator_token);
+          }
+     }
+     else {
+          printf("Someting goes wrong with operator\n");
+     }
        }
        else if (current =='"'){
           count_of_correct_str+=1;
-          TokenLiteral_t * str_token = generate_string(current,file);
+          Token_t * str_token = generate_string(current,file);
           if (str_token!=NULL){
                printf("TYPE of TOKEN[STR] ");
-               printf(" AND VALUE [%s]\n",(char*)str_token->value);
-               free(str_token->value);
+               printf(" AND VALUE [%s]\n",(char*)str_token->typeOf.data->value);
+               free(str_token->typeOf.data->value);
                free(str_token);
           }
           else{
@@ -396,18 +693,41 @@ void lexer(FILE * file){
           }
        }
 	  else if (isalpha(current)){
-	       TokenKeyword_t * test_tok = generate_keyword(current,file);
+	       Token_t * test_tok = generate_keyword(current,file);
             if (test_tok!=NULL){
-               if (test_tok->command==VAR){
-                    printf("Found variable with name [%s]\n",(char *)test_tok->value);
-                    push(&stack,test_tok);
-                    //free(test_tok->value);
+               if (test_tok->type == KEYWORD){
+                    if (test_tok->typeOf.keyword->cmd==VAR){
+                         printf("Found variable with name [%s]\n",(char *)test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword);
+                         free(test_tok);
+                    }
+                    else if (test_tok->typeOf.keyword->cmd==IF || test_tok->typeOf.keyword->cmd == ELIF || test_tok->typeOf.keyword->cmd==ELSE){
+                         printf("Found ветвление [%s]\n",test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword);
+                         free(test_tok);
+                    }
+                    else if (test_tok->typeOf.keyword->cmd == RETURN){
+                         printf("Found return statemant[%s]\n",test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword);
+                         free(test_tok);
+                    }
+                    else if (test_tok->typeOf.keyword->cmd == FOR || test_tok->typeOf.keyword->cmd == WHILE){
+                         printf("Found  loop [%s]\n",test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword->value);
+                         free(test_tok->typeOf.keyword);
+                         free(test_tok);
+                    }
                }
-               else if (test_tok->command==IF || test_tok->command == ELIF || test_tok->command==ELSE){
-                    printf("Found ветвление [%s]\n",test_tok->value);
-                    free(test_tok->value);
+               
+               else if (test_tok->type == IDENTIFIER){
+                    printf("Found identifier [%s] \n",test_tok->typeOf.identifier->name);
+                    free(test_tok->typeOf.identifier->name);
+                    free(test_tok->typeOf.identifier);
+                    free(test_tok);
                }
-               //free(test_tok);
             }
             else{
                printf("Undefinded command \n");
@@ -417,28 +737,12 @@ void lexer(FILE * file){
 	  //else{printf("%c",current);}
 	  current = fgetc(file);
 	  }
-       if (semicolon==0){
-          error_t * error = malloc(sizeof(error_t));
-          error->line = index	+1;
-          error->typeOfError = SemiColonError;
-          error_call(error);      
-      }
-      if (semicolon>1){
-          error_t * error = malloc(sizeof(error_t));
-          error->line = index	+1;
-          error->typeOfError = SemiColonError;
-          error_call(error); 
-      }
-       index+=1;
-       printf("%d line\n",index);
 	  
 	  
        if (current=='\n'){
           current = fgetc(file);
        }
      }
-     print_stack(stack);
-     free_stack(stack);
      printf("\n");
 }
 #endif

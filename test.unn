@@ -1,4 +1,4 @@
-var     a2a = 20<=12;
+var _a2a = 20;#Hello mymymymymymy
 exit(45);
 var name = "12+12";
 var age = 15+15;   
@@ -7,4 +7,9 @@ var age = 15+15;
     elif age<=18:
     print("Gaaaaty");
     else:
+while age<10:
+    print(age);
+
+for age in sosas:
+    print(a2a)
 print("Sosa"); 
