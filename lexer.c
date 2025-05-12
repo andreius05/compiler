@@ -88,6 +88,13 @@ typedef struct {
 
 
 
+typedef struct TokenArray
+{
+     Token_t ** tokens;
+     int count;
+}TokenArray_t;
+
+
 
 
 
@@ -320,10 +327,56 @@ Token_t * generate_operator(char current,FILE * file){
           free(token->typeOf.operator);
           free(token);
           return NULL;
-
      }
+     free(token->typeOf.operator);
+     free(token);
+     return NULL;
 }
-
+void free_token(Token_t *tok) {
+     if (!tok) return;
+ 
+     switch (tok->type) {
+         case DATA:
+             if (tok->typeOf.data) {
+                 free(tok->typeOf.data->value);
+                 free(tok->typeOf.data);
+             }
+             break;
+ 
+         case KEYWORD:
+             if (tok->typeOf.keyword) {
+                 free(tok->typeOf.keyword->value);
+                 free(tok->typeOf.keyword);
+             }
+             break;
+ 
+         case OPERATOR:
+             if (tok->typeOf.operator) {
+                 free(tok->typeOf.operator);
+             }
+             break;
+ 
+         case SYMBOL:
+             if (tok->typeOf.symbol) {
+                 free(tok->typeOf.symbol);
+             }
+             break;
+ 
+         case IDENTIFIER:
+             if (tok->typeOf.identifier) {
+                 free(tok->typeOf.identifier->name);
+                 free(tok->typeOf.identifier);
+             }
+             break;
+ 
+         default:
+             printf("Unknown token type\n");
+             break;
+     }
+ 
+     free(tok);
+ }
+ 
 
 Token_t * generate_keyword(char current,FILE * file){
      Token_t * token = malloc(sizeof(Token_t));
@@ -362,7 +415,7 @@ Token_t * generate_keyword(char current,FILE * file){
           if (current=='_' || isalpha(current)){
                while (isalpha(current) || isdigit(current )|| current=='_'){
                     if (index>63){
-                         printf("So big name of variable");
+                         printf("So big name of keyword");
                          abort();
                     }
                     nameOFvar[index] = current;
@@ -515,7 +568,7 @@ Token_t * generate_number(char current,FILE * file){
           *value = atoi(buffer);
           token->typeOf.data = malloc(sizeof(data_t));
           token->typeOf.data->typeOfData = INT;
-          token->typeOf.data->value = value;
+          token->typeOf.data->value = (int * )value;
           
      }
      else{
@@ -524,16 +577,139 @@ Token_t * generate_number(char current,FILE * file){
           *value = atoi(buffer);
           token->typeOf.data = malloc(sizeof(data_t));
           token->typeOf.data->typeOfData = FLOAT;
-          token->typeOf.data->value = value;
+          token->typeOf.data->value = (float * )value;
           
      }
      return token;
 }
 
+void print_token(Token_t * tok){
+     
 
-void lexer(FILE * file){
-     if (file==NULL)return;
+     if (tok->type == DATA){
+          if (tok->typeOf.data->typeOfData == INT){
+               printf("Found an INT [%d]\n",*(int * )tok->typeOf.data->value);
+               return;
+          }
+          else if (tok->typeOf.data->typeOfData == STRING){
+               printf("Found an a STR[%s]\n",(char *)tok->typeOf.data->value);
+               return;
+          }
+          else if (tok->typeOf.data->typeOfData == FLOAT){
+               printf("Found an FLOAT [%f]\n",*(float*)tok->typeOf.data->value);
+               return;
+          }
+          else if (tok->typeOf.data->typeOfData==BOOL){
+               printf("Found an BOOL []\n");
+               return;
+          }
+          else {
+               printf("DONT NOW THIS TYPE DROP\n");
+               return;
+          }
+     }
+     else if (tok->type==KEYWORD){
+          if (tok->typeOf.keyword->cmd == IF){
+               printf("Found if statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == ELIF){
+               printf("Found elif statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == ELSE){
+               printf("Found else statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == WHILE){
+               printf("Found while statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == FOR){
+               printf("Found for statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == RETURN){
+               printf("Found return statemant\n");
+          }
+          else if (tok->typeOf.keyword->cmd == VAR){
+               printf("Found var name of this vatr is[%s]\n",(char *)tok->typeOf.keyword->value);
+          }
+     }
+     else if (tok->type == OPERATOR){
+          if (tok->typeOf.operator->typeOfOperator== COMPARE){
+               printf("Found comparing \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== ASSIGN){
+               printf("Found assiging \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== MINUS){
+               printf("Found minus \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== DIVIDE){
+               printf("Found dividing \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== MULTIPLY){
+               printf("Found MULTIPLY \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== LESSorEQUALS){
+               printf("Found LESSorEQ \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== LESS){
+               printf("Found just less \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== MOREorEQUALS){
+               printf("Found MOReorEQ \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== MORE){
+               printf("Found more \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== MODULE){
+               printf("Found module \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== NotEQUALS){
+               printf("Found notEQ \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== AND){
+               printf("AND \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== OR){
+               printf("OR \n");
+          }
+     }
+     else if (tok->type == SYMBOL){
+          if (tok->typeOf.operator->typeOfOperator== lPAREN){
+               printf("lPAREN  \n");
+          }
+           else if (tok->typeOf.operator->typeOfOperator== rPAREN){
+               printf("Found rPAren \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== lBRACKET){
+               printf("Found lbracket \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== rBRACKET){
+               printf("Found rbracket \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== lKwSkob){
+               printf("Found lKwskob \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== rKwSkob){
+               printf("Found rKwskob \n");
+          }
+          else if (tok->typeOf.operator->typeOfOperator== SEMICOLON){
+               printf("Found SEMICOLON \n");
+          }
+     }
+     else if (tok->type == IDENTIFIER){
+          printf("Found identifier  [%s]\n",(char *)tok->typeOf.identifier->name);
+     }
+     else {
+          printf("IDK\n");
+     }
+}
+
+
+
+TokenArray_t * lexer(FILE * file){
+     if (file==NULL)return NULL;
      char current = fgetc(file);
+     Token_t **tokens = malloc(sizeof(Token_t*) * 1000); // Условно 1000
+     int token_count = 0;
      int index = 0;
      int semicolon = 0;
      int count_of_correct_str = 0;
@@ -543,39 +719,28 @@ void lexer(FILE * file){
 	  if (is_specific_symbol(current)){
           Token_t * token = generate_symbol(current,file);
           if (token->typeOf.symbol->symbol == lPAREN){
-               printf("Found ( this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
           }
           else if (token->typeOf.symbol->symbol == rPAREN){
-               printf("Found ) this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
           }
           else if (token->typeOf.symbol->symbol == lBRACKET){
-               printf("Found { this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
           }
           else if (token->typeOf.symbol->symbol == rBRACKET){
-               printf("Found } this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
           }
           else if (token->typeOf.symbol->symbol == lKwSkob){
-               printf("Found [ this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
+
           }
           else if (token->typeOf.symbol->symbol == rKwSkob){
-               printf("Found ] this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
+
           }
           else if (token->typeOf.symbol->symbol == SEMICOLON){
-               printf("Found ; this shit\n");
-               free(token->typeOf.symbol);
-               free(token);
+               tokens[token_count++] = token;
+
           }
        }
      else if (current=='#'){
@@ -584,16 +749,15 @@ void lexer(FILE * file){
 	  else if (isdigit(current)){
 	       Token_t * test_token = generate_number(current,file);
             if (test_token->typeOf.data->typeOfData==INT){
-               printf("TOKEN TYPE IS [INT] ");
-               printf(" AND VALUE IS %d\n",*(int * )test_token->typeOf.data->value);
+               tokens[token_count++] = test_token;
+
             }
             if (test_token->typeOf.data->typeOfData==FLOAT){
-               printf("TOKEN TYPE IS [FLOAT] ");
-               printf(" AND VALUE IS %f\n",*(float * )test_token->typeOf.data->value);
+               tokens[token_count++] = test_token;
+
             }
 	       printf("\n");
-	       free(test_token->typeOf.data->value);
-	       free(test_token);
+	       
 	       
 	  }
        else if (isoperator(current)){
@@ -601,74 +765,60 @@ void lexer(FILE * file){
           Token_t * operator_token = generate_operator(current,file);
           if (operator_token!=NULL){
           if (operator_token->typeOf.operator->typeOfOperator==ASSIGN){
-               printf("EQUALS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==COMPARE){
-               printf("COMPARING\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==MINUS){
-               printf("MINUS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==PLUS){
-               printf("PLUS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==DIVIDE){
-               printf("DIVIDE\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==MULTIPLY){
-               printf("MULLTIPLY\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==LESS){
-               printf("LESS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==LESSorEQUALS){
-               printf("LESS OR EQUALS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==MORE){
-               printf("MORE\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==MOREorEQUALS){
-               printf("MORE OR EQUALSE\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==NotEQUALS){
-               printf("NOT EQUALS\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==AND){
-               printf("AND\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==OR){
-               printf("OR\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
           else if (operator_token->typeOf.operator->typeOfOperator==MODULE){
-               printf("MODULE\n");
-               free(operator_token->typeOf.operator);
-               free(operator_token);
+               tokens[token_count++] = operator_token;
+
           }
      }
      else {
@@ -679,17 +829,17 @@ void lexer(FILE * file){
           count_of_correct_str+=1;
           Token_t * str_token = generate_string(current,file);
           if (str_token!=NULL){
-               printf("TYPE of TOKEN[STR] ");
-               printf(" AND VALUE [%s]\n",(char*)str_token->typeOf.data->value);
-               free(str_token->typeOf.data->value);
-               free(str_token);
+               tokens[token_count++] = str_token;
+
           }
           else{
                error_t * error = malloc(sizeof(error_t));
                error->typeOfError = SyntaxError;
                error->line = index+1;
                error_call(error);
-               return;
+               free(tokens);
+               free(error);
+               return NULL;
           }
        }
 	  else if (isalpha(current)){
@@ -697,36 +847,26 @@ void lexer(FILE * file){
             if (test_tok!=NULL){
                if (test_tok->type == KEYWORD){
                     if (test_tok->typeOf.keyword->cmd==VAR){
-                         printf("Found variable with name [%s]\n",(char *)test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword);
-                         free(test_tok);
+                         tokens[token_count++] = test_tok;
+
                     }
                     else if (test_tok->typeOf.keyword->cmd==IF || test_tok->typeOf.keyword->cmd == ELIF || test_tok->typeOf.keyword->cmd==ELSE){
-                         printf("Found ветвление [%s]\n",test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword);
-                         free(test_tok);
+                         tokens[token_count++] = test_tok;
+
                     }
                     else if (test_tok->typeOf.keyword->cmd == RETURN){
-                         printf("Found return statemant[%s]\n",test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword);
-                         free(test_tok);
+                         tokens[token_count++] = test_tok;
+
                     }
                     else if (test_tok->typeOf.keyword->cmd == FOR || test_tok->typeOf.keyword->cmd == WHILE){
-                         printf("Found  loop [%s]\n",test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword->value);
-                         free(test_tok->typeOf.keyword);
-                         free(test_tok);
+                         tokens[token_count++] = test_tok;
+
                     }
                }
                
                else if (test_tok->type == IDENTIFIER){
-                    printf("Found identifier [%s] \n",test_tok->typeOf.identifier->name);
-                    free(test_tok->typeOf.identifier->name);
-                    free(test_tok->typeOf.identifier);
-                    free(test_tok);
+                    tokens[token_count++] = test_tok;
+
                }
             }
             else{
@@ -744,12 +884,22 @@ void lexer(FILE * file){
        }
      }
      printf("\n");
+     TokenArray_t * token_arr = malloc(sizeof(TokenArray_t));
+     token_arr->tokens = tokens;
+     token_arr->count = token_count;
+     return token_arr;
 }
 #endif
 
-int main(int argc , char **argv){
-    FILE * file;
-    file = fopen("test.unn","r");
-    lexer(file);
-    fclose(file);
+
+void free_token_array(TokenArray_t* token_arr) {
+    if (!token_arr) return;
+    for (int i = 0; i < token_arr->count; ++i) {
+        free_token(token_arr->tokens[i]);
+    }
+    free(token_arr->tokens);
+    free(token_arr);
 }
+
+
+

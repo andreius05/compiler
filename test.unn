@@ -2,7 +2,7 @@ var _a2a = 20;#Hello mymymymymymy
 exit(45);
 var name = "12+12";
 var age = 15+15;   
-    if age<name:
+    if age<name || name == _a2a:
     print("Gaay");
     elif age<=18:
     print("Gaaaaty");
